@@ -1,0 +1,78 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "URL Shortener API",
+    "description": "Сервис для создания коротких ссылок",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Local server"
+    }
+  ],
+  "paths": {
+    "/": {
+      "post": {
+        "summary": "Создать короткую ссылку",
+        "description": "Принимает оригинальный URL и возвращает алиас",
+        "tags": ["URL"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "example": "https://google.com"
+                  }
+                },
+                "required": ["url"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Ссылка успешно создана",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "OK" },
+                    "alias": { "type": "string", "example": "AbCdEfGhIj" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Неверный формат запроса" },
+          "409": { "description": "Такой URL уже существует" }
+        }
+      }
+    },
+    "/{alias}": {
+      "get": {
+        "summary": "Редирект на оригинальный URL",
+        "description": "Ищет оригинальную ссылку по алиасу и делает HTTP 302 редирект",
+        "tags": ["URL"],
+        "parameters": [
+          {
+            "name": "alias",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Алиас короткой ссылки (10 символов)"
+          }
+        ],
+        "responses": {
+          "302": { "description": "Редирект на оригинальный URL" },
+          "404": { "description": "Ссылка не найдена" }
+        }
+      }
+    }
+  }
+}

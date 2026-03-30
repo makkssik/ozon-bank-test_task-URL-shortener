@@ -1,6 +1,6 @@
 env: "local"
 storage_path: "host=localhost port=5438 user=makkssik password=qwerty dbname=postgres sslmode=disable"
 http_server:
-  address: ":8081"
+  address: ":8080"
   timeout: 4s
   idle_timeout: 60s

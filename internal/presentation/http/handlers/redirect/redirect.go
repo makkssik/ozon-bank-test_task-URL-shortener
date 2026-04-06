@@ -1,11 +1,11 @@
 package redirect
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
-	"url-shortener/internal/application/contracts/url"
-	"url-shortener/internal/application/contracts/url/operations"
+	"url-shortener/internal/domain/entities"
 	"url-shortener/internal/domain/exceptions"
 	"url-shortener/internal/presentation/http/response"
 
@@ -14,11 +14,16 @@ import (
 	"github.com/go-chi/render"
 )
 
-func NewRedirectHandler(log *slog.Logger, service url.Service) http.HandlerFunc {
+//go:generate go run github.com/vektra/mockery/v2@latest --name=URLProvider --output=./mocks --outpkg=mocks --filename=url_provider.go
+type URLProvider interface {
+	GetOriginal(ctx context.Context, shortURL string) (*entities.URL, error)
+}
+
+func NewRedirectHandler(log *slog.Logger, provider URLProvider) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.redirect.new"
 
-		log = log.With(
+		log := log.With(
 			slog.String("op", op),
 			slog.String("request_id", middleware.GetReqID(r.Context())),
 		)
@@ -31,15 +36,13 @@ func NewRedirectHandler(log *slog.Logger, service url.Service) http.HandlerFunc 
 			return
 		}
 
-		res, err := service.GetOriginal(r.Context(), operations.GetOriginalRequest{
-			ShortURL: alias,
-		})
+		urlEntity, err := provider.GetOriginal(r.Context(), alias)
 
 		if err != nil {
-			if errors.Is(err, exceptions.ErrURLNotFound) {
-				log.Info("url not found", slog.String("alias", alias))
-				render.Status(r, http.StatusNotFound)
-				render.JSON(w, r, response.Error("not found"))
+			if errors.Is(err, exceptions.ErrInvalidChars) {
+				log.Info("invalid alias format", slog.String("alias", alias))
+				render.Status(r, http.StatusBadRequest)
+				render.JSON(w, r, response.Error("invalid alias format"))
 				return
 			}
 
@@ -49,8 +52,15 @@ func NewRedirectHandler(log *slog.Logger, service url.Service) http.HandlerFunc 
 			return
 		}
 
-		log.Info("got url", slog.String("url", res.OriginalURL))
+		if urlEntity == nil {
+			log.Info("url not found", slog.String("alias", alias))
+			render.Status(r, http.StatusNotFound)
+			render.JSON(w, r, response.Error("not found"))
+			return
+		}
 
-		http.Redirect(w, r, res.OriginalURL, http.StatusFound)
+		log.Info("got url", slog.String("url", urlEntity.Original))
+
+		http.Redirect(w, r, urlEntity.Original, http.StatusFound)
 	}
 }

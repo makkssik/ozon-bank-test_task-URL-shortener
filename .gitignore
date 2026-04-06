@@ -3,7 +3,8 @@
 *.dll
 *.so
 *.dylib
-url-shortener
+
+/url-shortener
 
 *.test
 *.out
